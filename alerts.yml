@@ -1,0 +1,49 @@
+groups:
+  - name: fundecodes_alerts
+    rules:
+
+      # ALERTA 1 — Tasa alta de errores HTTP (>10% de requests son 4xx/5xx)
+      - alert: HighHttpErrorRate
+        expr: |
+          (
+            sum(rate(http_errors_total{app="fundecodes-backend"}[2m]))
+            /
+            sum(rate(http_requests_total{app="fundecodes-backend"}[2m]))
+          ) > 0.10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tasa alta de errores HTTP en Fundecodes Backend"
+          description: >
+            Más del 10% de las peticiones están fallando.
+            Valor actual: {{ printf "%.2f" $value | humanizePercentage }}
+
+      # ALERTA 2 — Memoria heap de Node.js > 250 MB
+      - alert: HighHeapMemoryUsage
+        expr: |
+          nodejs_heap_size_used_bytes{app="fundecodes-backend"} > 262144000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso elevado de memoria heap en Fundecodes Backend"
+          description: >
+            El heap de Node.js supera 250 MB.
+            Actual: {{ $value | humanize1024 }}B
+
+      # ALERTA 3 — Tiempo de respuesta p95 > 2 segundos
+      - alert: SlowApiResponses
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_duration_seconds_bucket{app="fundecodes-backend"}[5m])) by (le, route)
+          ) > 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API lenta detectada en Fundecodes Backend"
+          description: >
+            El percentil 95 de duración supera 2 segundos en la ruta {{ $labels.route }}.
+            Actual: {{ printf "%.2f" $value }}s

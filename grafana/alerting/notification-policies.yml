@@ -1,0 +1,17 @@
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: Fundecodes Backend Webhook
+    group_by: [alertname, severity]
+    group_wait: 10s
+    group_interval: 5m
+    repeat_interval: 1h
+    routes:
+      - receiver: Fundecodes Backend Webhook
+        matchers:
+          - app = fundecodes-backend
+        continue: true
+      - receiver: MS Teams
+        matchers:
+          - app = fundecodes-backend

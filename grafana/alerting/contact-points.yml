@@ -1,0 +1,27 @@
+apiVersion: 1
+
+contactPoints:
+  # ── Webhook al backend (crea incidente en ServiceNow) ────────────────────────
+  - orgId: 1
+    name: Fundecodes Backend Webhook
+    receivers:
+      - uid: fundecodes-webhook-receiver
+        type: webhook
+        settings:
+          url: "http://host.docker.internal:4000/api/webhooks/alert"
+          httpMethod: POST
+          maxAlerts: 10
+        disableResolveMessage: false
+
+  # ── MS Teams ─────────────────────────────────────────────────────────────────
+  # Reemplaza TEAMS_WEBHOOK_URL con la URL de tu canal de Teams
+  - orgId: 1
+    name: MS Teams
+    receivers:
+      - uid: msteams-receiver
+        type: teams
+        settings:
+          url: "${TEAMS_WEBHOOK_URL}"
+          title: "Alerta Fundecodes: {{ .CommonLabels.alertname }}"
+          message: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+        disableResolveMessage: false

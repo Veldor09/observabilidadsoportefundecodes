@@ -1,0 +1,324 @@
+<!--
+  ARTÍCULO DE CONOCIMIENTO — KB0002
+  Título  : Instalación del Frontend Fundecodes en Windows
+  Versión : 1.0
+  Autores : [Miembro 1 — Autor], [Miembro 2 — Coautor], [Miembro 3 — Aprobador]
+
+  INSTRUCCIONES PARA SERVICENOW:
+  1. Crear nuevo artículo en Knowledge → Articles → New
+  2. Categoría: Installation Guide
+  3. Copiar el contenido del <body> al editor HTML de ServiceNow
+  4. Sustituir cada [IMAGEN: descripción] por una captura de pantalla real
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>KB0002 - Instalación Frontend Fundecodes (Windows)</title></head>
+<body>
+
+<h2>Instalación del Frontend Fundecodes Digital en Windows</h2>
+
+<p>
+  Este artículo describe el proceso para instalar y ejecutar el frontend del sistema
+  <strong>Fundecodes Digital</strong> en Windows. El frontend es una aplicación web
+  desarrollada con <strong>Next.js 14</strong> y <strong>Tailwind CSS</strong>.
+  Se conecta al backend NestJS a través de su API REST.
+</p>
+
+<hr/>
+
+<h3>1. Descripción del sistema</h3>
+
+<p>
+  El frontend provee la interfaz de usuario para todos los módulos del sistema Fundecodes:
+  panel administrativo, gestión de proyectos, voluntariado, facturación y reportes.
+</p>
+
+<p><strong>Stack tecnológico:</strong></p>
+<ul>
+  <li><strong>Next.js 14</strong> — Framework React con renderizado del lado del servidor (SSR)</li>
+  <li><strong>Tailwind CSS</strong> — Framework de estilos utilitario</li>
+  <li><strong>Node.js 20</strong> — Runtime de JavaScript</li>
+</ul>
+
+<p><strong>Diagrama de conexión:</strong></p>
+<p>
+  <em>[IMAGEN: Diagrama mostrando el navegador del usuario → Frontend Next.js (puerto 3000)
+  → Backend NestJS (puerto 4000) → PostgreSQL (puerto 5432)]</em>
+</p>
+
+<hr/>
+
+<h3>2. Requisitos previos</h3>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr><th>Herramienta</th><th>Versión mínima</th><th>Descarga</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Windows</td>
+      <td>10 / 11 (64-bit)</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>Node.js</td>
+      <td>20.x LTS</td>
+      <td>https://nodejs.org/en/download</td>
+    </tr>
+    <tr>
+      <td>Git para Windows</td>
+      <td>2.x</td>
+      <td>https://git-scm.com/download/win</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote>
+  <strong>Nota:</strong> El backend (KB0001) debe estar corriendo en
+  <code>http://localhost:4000</code> antes de iniciar el frontend.
+</blockquote>
+
+<hr/>
+
+<h3>3. Instalar Node.js en Windows</h3>
+
+<ol>
+  <li>
+    Descargar el instalador LTS desde <strong>nodejs.org</strong> (archivo
+    <code>.msi</code> para Windows 64-bit).
+  </li>
+  <li>
+    Ejecutar el instalador. Marcar la opción
+    <em>"Automatically install the necessary tools"</em> si se solicita.
+  </li>
+  <li>
+    Al finalizar, abrir una nueva ventana de <strong>PowerShell</strong> o
+    <strong>Símbolo del sistema</strong> y verificar:
+    <pre><code>node --version
+npm --version</code></pre>
+  </li>
+</ol>
+
+<p>
+  <em>[IMAGEN: Instalador de Node.js en Windows mostrando la pantalla de bienvenida
+  con la versión 20.x LTS seleccionada]</em>
+</p>
+
+<p>
+  <em>[IMAGEN: PowerShell en Windows mostrando la salida de <code>node --version</code>
+  (v20.x.x) y <code>npm --version</code>]</em>
+</p>
+
+<hr/>
+
+<h3>4. Obtener el código fuente</h3>
+
+<p>
+  Abrir <strong>PowerShell</strong> o <strong>Git Bash</strong> y ejecutar:
+</p>
+
+<pre><code># Clonar el repositorio
+git clone &lt;URL_DEL_REPOSITORIO&gt; fundecodes
+cd fundecodes\Front\frontfundecodesdigital</code></pre>
+
+<p>La estructura del frontend es la siguiente:</p>
+<pre><code>Front/frontfundecodesdigital/
+├── src/
+│   └── app/                # Rutas y páginas Next.js (App Router)
+├── public/                 # Archivos estáticos (íconos, imágenes)
+├── next.config.mjs         # Configuración de Next.js
+├── tailwind.config.js      # Configuración de Tailwind CSS
+├── postcss.config.mjs      # PostCSS
+└── package.json            # Dependencias</code></pre>
+
+<p>
+  <em>[IMAGEN: Explorador de archivos de Windows o PowerShell mostrando la estructura
+  de carpetas del proyecto frontend]</em>
+</p>
+
+<hr/>
+
+<h3>5. Configurar variables de entorno</h3>
+
+<p>
+  Crear el archivo <code>.env.local</code> en la raíz de la carpeta
+  <code>frontfundecodesdigital</code>:
+</p>
+
+<pre><code># Abrir el Bloc de notas para crear el archivo
+notepad .env.local</code></pre>
+
+<p>Agregar el siguiente contenido:</p>
+
+<pre><code># URL del backend NestJS
+NEXT_PUBLIC_API_URL=http://localhost:4000
+
+# (Opcional) Para builds de producción
+NEXT_PUBLIC_APP_NAME=Fundecodes Digital</code></pre>
+
+<p>
+  <em>[IMAGEN: Bloc de notas de Windows con el archivo .env.local abierto y las
+  variables configuradas]</em>
+</p>
+
+<hr/>
+
+<h3>6. Instalar dependencias</h3>
+
+<p>Desde la carpeta <code>frontfundecodesdigital</code> en PowerShell:</p>
+
+<pre><code>npm install</code></pre>
+
+<p>
+  Este proceso puede tardar entre 1 y 3 minutos dependiendo de la velocidad de la
+  conexión a internet. Al finalizar debe mostrar un mensaje similar a:
+</p>
+<pre><code>added 312 packages, and audited 313 packages in 45s</code></pre>
+
+<p>
+  <em>[IMAGEN: PowerShell en Windows mostrando la salida de <code>npm install</code>
+  completada exitosamente con el número de paquetes instalados]</em>
+</p>
+
+<hr/>
+
+<h3>7. Iniciar el servidor de desarrollo</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<p>La salida esperada es:</p>
+<pre><code>  ▲ Next.js 14.x.x
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.1s</code></pre>
+
+<p>
+  Abrir un navegador web y visitar <strong>http://localhost:3000</strong>.
+</p>
+
+<p>
+  <em>[IMAGEN: Terminal PowerShell mostrando la salida de inicio de Next.js con
+  el mensaje "Ready" y el puerto 3000]</em>
+</p>
+
+<p>
+  <em>[IMAGEN: Navegador web mostrando la página de inicio del sistema Fundecodes
+  Digital en http://localhost:3000]</em>
+</p>
+
+<hr/>
+
+<h3>8. Build de producción (opcional)</h3>
+
+<p>Para generar una build optimizada para producción:</p>
+
+<pre><code># Generar build de producción
+npm run build
+
+# Iniciar el servidor de producción
+npm run start</code></pre>
+
+<p>
+  El servidor de producción también estará disponible en
+  <code>http://localhost:3000</code> pero con el código compilado y optimizado.
+</p>
+
+<hr/>
+
+<h3>9. Verificar la conexión con el backend</h3>
+
+<p>
+  Para confirmar que el frontend se comunica correctamente con el backend:
+</p>
+
+<ol>
+  <li>
+    Asegurarse de que el backend esté corriendo en
+    <code>http://localhost:4000</code> (ver <strong>KB0001</strong>).
+  </li>
+  <li>
+    Abrir las herramientas de desarrollador del navegador
+    (<kbd>F12</kbd>) → pestaña <strong>Network</strong>.
+  </li>
+  <li>
+    Navegar a la sección de login del sistema.
+  </li>
+  <li>
+    Verificar que las peticiones a la API retornen códigos HTTP
+    <code>200</code> o <code>401</code> (no errores de red como <code>ERR_CONNECTION_REFUSED</code>).
+  </li>
+</ol>
+
+<p>
+  <em>[IMAGEN: DevTools del navegador mostrando la pestaña Network con peticiones
+  exitosas al backend en localhost:4000]</em>
+</p>
+
+<hr/>
+
+<h3>10. Resolución de problemas comunes en Windows</h3>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>npm : El término 'npm' no se reconoce</code></td>
+      <td>Node.js no está instalado o no está en el PATH</td>
+      <td>Reinstalar Node.js y abrir una nueva ventana de PowerShell</td>
+    </tr>
+    <tr>
+      <td>Error de política de ejecución de scripts en PowerShell</td>
+      <td>Windows bloquea scripts por defecto</td>
+      <td>Ejecutar:
+        <code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Puerto 3000 en uso</td>
+      <td>Otro proceso ocupa el puerto</td>
+      <td>Ejecutar <code>npm run dev -- -p 3001</code> para usar otro puerto</td>
+    </tr>
+    <tr>
+      <td>Error <code>ERR_CONNECTION_REFUSED</code> al hacer login</td>
+      <td>El backend no está corriendo</td>
+      <td>Iniciar el backend primero (ver KB0001), luego reiniciar el frontend</td>
+    </tr>
+    <tr>
+      <td>Páginas en blanco después de login</td>
+      <td>Variable <code>NEXT_PUBLIC_API_URL</code> incorrecta o ausente</td>
+      <td>Verificar el archivo <code>.env.local</code> y reiniciar el servidor</td>
+    </tr>
+    <tr>
+      <td>Error de CORS al llamar al backend</td>
+      <td>El backend no permite el origen del frontend</td>
+      <td>Agregar <code>http://localhost:3000</code> a
+          <code>CORS_ALLOWED_ORIGINS</code> en el <code>.env</code> del backend</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h3>11. Información adicional</h3>
+
+<ul>
+  <li>
+    Para levantar el backend NestJS (dependencia del frontend), consultar
+    <strong>KB0001 — Instalación del Backend Fundecodes (Linux)</strong>.
+  </li>
+  <li>
+    Para configurar el monitoreo y alertas del sistema, consultar
+    <strong>KB0003 — Configuración de Observabilidad, Alertas y Gestión de Incidentes</strong>.
+  </li>
+</ul>
+
+<p><strong>Versión:</strong> 1.0 &nbsp;|&nbsp;
+   <strong>Última actualización:</strong> Junio 2026 &nbsp;|&nbsp;
+   <strong>Categoría:</strong> Installation Guide</p>
+
+</body>
+</html>

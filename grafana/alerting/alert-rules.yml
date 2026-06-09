@@ -1,0 +1,165 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Fundecodes Alerts
+    folder: Fundecodes
+    interval: 1m
+    rules:
+
+      # ── Alerta 1: Alta tasa de errores HTTP ──────────────────────────────────
+      - uid: fundecodes-high-error-rate
+        title: "Alta Tasa de Errores HTTP"
+        condition: Threshold
+        data:
+          - refId: Query
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus-fundecodes
+            model:
+              expr: >
+                sum(rate(http_errors_total{app="fundecodes-backend"}[2m]))
+                /
+                sum(rate(http_requests_total{app="fundecodes-backend"}[2m]))
+              instant: true
+              refId: Query
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: Threshold
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [0.10]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [Query]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                name: Expression
+                type: __expr__
+                uid: "-100"
+              expression: Query
+              refId: Threshold
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: warning
+          app: fundecodes-backend
+        annotations:
+          summary: "Alta tasa de errores HTTP en Fundecodes"
+          description: "Más del 10% de las peticiones están fallando."
+
+      # ── Alerta 2: Uso alto de memoria heap ───────────────────────────────────
+      - uid: fundecodes-high-heap-memory
+        title: "Uso Alto de Memoria Heap"
+        condition: Threshold
+        data:
+          - refId: Query
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus-fundecodes
+            model:
+              expr: "nodejs_heap_size_used_bytes{app=\"fundecodes-backend\"}"
+              instant: true
+              refId: Query
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: Threshold
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [262144000]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [Query]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                name: Expression
+                type: __expr__
+                uid: "-100"
+              expression: Query
+              refId: Threshold
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: warning
+          app: fundecodes-backend
+        annotations:
+          summary: "Memoria heap de Node.js supera 250 MB"
+          description: "El proceso backend está consumiendo demasiada memoria."
+
+      # ── Alerta 3: Respuestas lentas (p95 > 2s) ───────────────────────────────
+      - uid: fundecodes-slow-responses
+        title: "API con Respuestas Lentas"
+        condition: Threshold
+        data:
+          - refId: Query
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus-fundecodes
+            model:
+              expr: >
+                histogram_quantile(
+                  0.95,
+                  sum(rate(http_request_duration_seconds_bucket{app="fundecodes-backend"}[5m])) by (le)
+                )
+              instant: true
+              refId: Query
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: Threshold
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "-100"
+            model:
+              conditions:
+                - evaluator:
+                    params: [2]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [Query]
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                name: Expression
+                type: __expr__
+                uid: "-100"
+              expression: Query
+              refId: Threshold
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: critical
+          app: fundecodes-backend
+        annotations:
+          summary: "API Fundecodes respondiendo lento"
+          description: "El percentil 95 de latencia supera los 2 segundos."

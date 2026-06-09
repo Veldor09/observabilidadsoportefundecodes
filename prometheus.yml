@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers: []
+
+scrape_configs:
+  - job_name: 'fundecodes-backend'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:4001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'fundecodes-backend'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

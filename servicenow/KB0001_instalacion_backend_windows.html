@@ -1,0 +1,366 @@
+<!--
+  ARTÍCULO DE CONOCIMIENTO — KB0001
+  Título  : Instalación del Backend Fundecodes en Windows
+  Versión : 1.0
+  Autores : [Miembro 1 — Autor], [Miembro 2 — Coautor], [Miembro 3 — Aprobador]
+
+  INSTRUCCIONES PARA SERVICENOW:
+  1. Crear nuevo artículo en Knowledge → Articles → New
+  2. Categoría: Installation Guide
+  3. Copiar el contenido entre las etiquetas <body> al editor HTML de ServiceNow
+  4. Sustituir cada [IMAGEN: descripción] por una captura de pantalla real
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><title>KB0001 - Instalación Backend Fundecodes (Windows)</title></head>
+<body>
+
+<h2>Instalación del Backend Fundecodes Digital en Windows</h2>
+
+<p>
+  Este artículo describe el proceso completo para desplegar el backend del sistema
+  <strong>Fundecodes Digital</strong> en un entorno Windows. El backend es una API REST
+  desarrollada con <strong>NestJS</strong>, con <strong>PostgreSQL</strong> como base de datos
+  y <strong>Prisma</strong> como ORM. El proceso utiliza <strong>Docker Desktop</strong>
+  para levantar la base de datos y <strong>PowerShell</strong> para ejecutar el servidor.
+</p>
+
+<hr/>
+
+<h3>1. Descripción del sistema</h3>
+
+<p>
+  Fundecodes Digital es la plataforma de gestión interna de la fundación. El backend expone
+  una API REST que cubre los siguientes módulos:
+</p>
+<ul>
+  <li>Autenticación JWT (login, recuperación de contraseña)</li>
+  <li>Gestión de usuarios, roles y permisos</li>
+  <li>Proyectos y programa de voluntariado</li>
+  <li>Facturación, contabilidad y reportes</li>
+  <li>Noticias y páginas informativas</li>
+  <li>Endpoint <code>/metrics</code> para Prometheus</li>
+</ul>
+
+<p><strong>Diagrama de componentes:</strong></p>
+<p>
+  <em>[IMAGEN: Diagrama arquitectónico que muestre Frontend → Backend (NestJS en puerto 4000)
+  → PostgreSQL (puerto 5432), con Prometheus apuntando al endpoint /metrics del backend]</em>
+</p>
+
+<hr/>
+
+<h3>2. Requisitos previos</h3>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr><th>Herramienta</th><th>Versión mínima</th><th>Verificación en PowerShell</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Windows</td><td>10 / 11 (64-bit)</td><td>—</td></tr>
+    <tr><td>Node.js</td><td>20.x LTS</td><td><code>node --version</code></td></tr>
+    <tr><td>npm</td><td>10.x</td><td><code>npm --version</code></td></tr>
+    <tr><td>Docker Desktop</td><td>4.x</td><td><code>docker --version</code></td></tr>
+    <tr><td>Git para Windows</td><td>2.x</td><td><code>git --version</code></td></tr>
+  </tbody>
+</table>
+
+<p>
+  <em>[IMAGEN: PowerShell mostrando la salida de los cuatro comandos de verificación
+  anteriores ejecutados uno tras otro]</em>
+</p>
+
+<hr/>
+
+<h3>3. Instalar Node.js en Windows</h3>
+
+<ol>
+  <li>
+    Descargar el instalador LTS desde <strong>nodejs.org</strong> (archivo
+    <code>.msi</code> para Windows 64-bit).
+  </li>
+  <li>
+    Ejecutar el instalador con las opciones por defecto. Si aparece la pantalla
+    <em>"Tools for Native Modules"</em>, marcar la casilla para instalar las
+    herramientas adicionales.
+  </li>
+  <li>
+    Abrir una nueva ventana de <strong>PowerShell</strong> y verificar:
+    <pre><code>node --version   # v20.x.x
+npm --version    # 10.x.x</code></pre>
+  </li>
+</ol>
+
+<p>
+  <em>[IMAGEN: Instalador de Node.js en Windows mostrando la pantalla con la versión
+  20.x LTS y las opciones de instalación seleccionadas]</em>
+</p>
+
+<hr/>
+
+<h3>4. Instalar Docker Desktop en Windows</h3>
+
+<ol>
+  <li>
+    Descargar Docker Desktop desde <strong>docker.com/products/docker-desktop</strong>.
+  </li>
+  <li>
+    Ejecutar el instalador. Seleccionar la opción de usar
+    <strong>WSL 2</strong> como backend (recomendado en Windows 10/11).
+  </li>
+  <li>
+    Reiniciar el equipo si el instalador lo solicita.
+  </li>
+  <li>
+    Abrir Docker Desktop y esperar a que el ícono de la ballena en la barra de tareas
+    indique que Docker está corriendo.
+  </li>
+  <li>
+    Verificar en PowerShell:
+    <pre><code>docker --version
+docker compose version</code></pre>
+  </li>
+</ol>
+
+<p>
+  <em>[IMAGEN: Docker Desktop en Windows con el ícono en la barra de tareas y el
+  panel principal mostrando que el motor está corriendo (Engine running)]</em>
+</p>
+
+<hr/>
+
+<h3>5. Obtener el código fuente</h3>
+
+<p>Abrir <strong>PowerShell</strong> y ejecutar:</p>
+
+<pre><code># Clonar el repositorio
+git clone &lt;URL_DEL_REPOSITORIO&gt; fundecodes
+cd fundecodes\Back\backfundecodesdigital</code></pre>
+
+<p>La estructura relevante del proyecto es la siguiente:</p>
+<pre><code>Back\backfundecodesdigital\
+├── src\                    # Código fuente NestJS
+│   ├── metrics\            # Métricas Prometheus
+│   ├── webhooks\           # Integración ServiceNow y Teams
+│   ├── auth\               # Autenticación JWT
+│   └── SistemaAdmin\       # Módulos del sistema
+├── prisma\
+│   ├── schema.prisma       # Modelo de base de datos
+│   └── migrations\         # Migraciones aplicadas
+├── docker-compose.yml      # PostgreSQL en contenedor
+├── Dockerfile              # Imagen de producción
+└── .env.production.example # Plantilla de variables de entorno</code></pre>
+
+<hr/>
+
+<h3>6. Configurar variables de entorno</h3>
+
+<p>Copiar la plantilla de ejemplo y editarla:</p>
+
+<pre><code># En PowerShell, desde la carpeta backfundecodesdigital\
+Copy-Item .env.production.example .env
+notepad .env</code></pre>
+
+<p>Las variables mínimas necesarias para desarrollo local son:</p>
+
+<pre><code>NODE_ENV=development
+PORT=4000
+
+# PostgreSQL (debe coincidir con docker-compose.yml)
+DATABASE_URL=postgresql://fundecodes:fundecodes@localhost:5432/fundecodes_db?schema=public
+
+# JWT — generar con: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+JWT_SECRET=REEMPLAZAR_CON_SECRETO_LARGO
+JWT_EXPIRES=1d
+
+# Correo (opcional para desarrollo local)
+MJ_APIKEY_PUBLIC=
+MJ_APIKEY_PRIVATE=
+
+# ServiceNow (para integración de alertas)
+SERVICENOW_INSTANCE=https://&lt;tu-instancia&gt;.service-now.com
+SERVICENOW_USER=api.fundecodes
+SERVICENOW_PASSWORD=&lt;contraseña&gt;
+
+# MS Teams (Webhook de Power Automate)
+TEAMS_WEBHOOK_URL=https://&lt;tu-webhook&gt;</code></pre>
+
+<p>
+  <em>[IMAGEN: Bloc de notas de Windows con el archivo .env abierto y las variables
+  configuradas (con contraseñas ocultadas)]</em>
+</p>
+
+<hr/>
+
+<h3>7. Levantar la base de datos con Docker Desktop</h3>
+
+<p>Desde PowerShell en la carpeta <code>backfundecodesdigital\</code>:</p>
+
+<pre><code>docker compose up -d</code></pre>
+
+<p>Verificar que el contenedor está corriendo:</p>
+
+<pre><code>docker compose ps</code></pre>
+
+<p>La salida esperada es:</p>
+<pre><code>NAME           IMAGE         STATUS          PORTS
+fundecodes-db  postgres:16   Up (healthy)    0.0.0.0:5432->5432/tcp</code></pre>
+
+<p>
+  También se puede verificar visualmente en el panel de <strong>Docker Desktop</strong>:
+  el contenedor <code>fundecodes-db</code> debe aparecer con estado
+  <em>Running</em> (ícono verde).
+</p>
+
+<p>
+  <em>[IMAGEN: Docker Desktop en Windows mostrando el contenedor fundecodes-db en
+  estado Running con el puerto 5432 mapeado]</em>
+</p>
+
+<hr/>
+
+<h3>8. Instalar dependencias Node.js y ejecutar migraciones</h3>
+
+<pre><code># Instalar dependencias
+npm install
+
+# Generar el cliente Prisma
+npx prisma generate
+
+# Aplicar las migraciones a la base de datos
+npx prisma migrate deploy
+
+# (Opcional) Poblar datos iniciales
+npx prisma db seed</code></pre>
+
+<p>
+  <em>[IMAGEN: PowerShell mostrando la salida de <code>npx prisma migrate deploy</code>
+  con todas las migraciones aplicadas exitosamente]</em>
+</p>
+
+<hr/>
+
+<h3>9. Iniciar el backend</h3>
+
+<h4>Modo desarrollo (con hot-reload)</h4>
+<pre><code>npm run start:dev</code></pre>
+
+<h4>Modo producción</h4>
+<pre><code>npm run build
+npm run start:prod</code></pre>
+
+<p>
+  Una vez iniciado, el backend estará disponible en
+  <strong>http://localhost:4000</strong>.
+</p>
+
+<p>Endpoints clave:</p>
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr><th>Endpoint</th><th>Descripción</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>GET /healthz</code></td><td>Health check del servicio</td></tr>
+    <tr><td><code>GET /metrics</code></td><td>Métricas Prometheus</td></tr>
+    <tr><td><code>GET /api/docs</code></td><td>Documentación Swagger (solo en desarrollo)</td></tr>
+    <tr><td><code>POST /api/auth/login</code></td><td>Autenticación</td></tr>
+  </tbody>
+</table>
+
+<p>
+  <em>[IMAGEN: PowerShell mostrando el inicio del servidor NestJS con los logs de
+  arranque y el mensaje indicando que escucha en el puerto 4000]</em>
+</p>
+
+<p>
+  <em>[IMAGEN: Navegador mostrando la respuesta JSON del endpoint
+  <code>http://localhost:4000/healthz</code> con <code>{"status":"ok"}</code>]</em>
+</p>
+
+<p>
+  <em>[IMAGEN: Navegador mostrando el endpoint <code>http://localhost:4000/metrics</code>
+  con las métricas de Prometheus en formato texto]</em>
+</p>
+
+<hr/>
+
+<h3>10. Verificar el funcionamiento desde PowerShell</h3>
+
+<pre><code># Verificar health check
+Invoke-WebRequest -Uri http://localhost:4000/healthz | Select-Object -ExpandProperty Content
+
+# Verificar métricas Prometheus (primeras 20 líneas)
+(Invoke-WebRequest -Uri http://localhost:4000/metrics).Content -split "`n" | Select-Object -First 20</code></pre>
+
+<p>
+  La respuesta de <code>/healthz</code> debe contener <code>{"status":"ok"}</code>.
+  La respuesta de <code>/metrics</code> debe mostrar líneas con prefijos como
+  <code>http_requests_total</code> y <code>nodejs_heap_size_used_bytes</code>.
+</p>
+
+<hr/>
+
+<h3>11. Resolución de problemas comunes en Windows</h3>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Error: <code>Can't reach database server at localhost:5432</code></td>
+      <td>Docker Desktop no está corriendo o el contenedor no levantó</td>
+      <td>Abrir Docker Desktop, esperar a que el motor inicie, luego
+          <code>docker compose up -d</code></td>
+    </tr>
+    <tr>
+      <td>Error de política de ejecución de scripts en PowerShell</td>
+      <td>Windows bloquea scripts por defecto</td>
+      <td>Ejecutar en PowerShell como administrador:
+          <code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></td>
+    </tr>
+    <tr>
+      <td>Puerto 4000 ya en uso</td>
+      <td>Otro proceso ocupa el puerto</td>
+      <td>Cambiar <code>PORT=4001</code> en <code>.env</code> o identificar el proceso:
+          <code>netstat -ano | findstr :4000</code></td>
+    </tr>
+    <tr>
+      <td>Métricas no aparecen en Prometheus</td>
+      <td>Prometheus apunta a dirección incorrecta</td>
+      <td>Verificar que <code>prometheus.yml</code> usa
+          <code>host.docker.internal:4000</code> (no <code>localhost</code>)
+          ya que Prometheus corre dentro de Docker</td>
+    </tr>
+    <tr>
+      <td>Error CORS desde el frontend</td>
+      <td><code>CORS_ALLOWED_ORIGINS</code> no incluye el origen del frontend</td>
+      <td>Agregar <code>http://localhost:3000</code> a
+          <code>CORS_ALLOWED_ORIGINS</code> en el <code>.env</code> del backend</td>
+    </tr>
+    <tr>
+      <td><code>npx prisma migrate deploy</code> falla con error de conexión</td>
+      <td>El contenedor de PostgreSQL no está listo aún</td>
+      <td>Esperar 10-15 segundos después de <code>docker compose up -d</code>
+          y volver a intentar</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h3>12. Información adicional</h3>
+
+<ul>
+  <li>Para instalar el frontend Next.js en Windows, consultar
+      <strong>KB0002 — Instalación del Frontend Fundecodes (Windows)</strong>.</li>
+  <li>Para el stack de observabilidad (Prometheus + Grafana), consultar
+      <strong>KB0003 — Configuración de Observabilidad, Alertas y Gestión de Incidentes</strong>.</li>
+</ul>
+
+<p><strong>Versión:</strong> 1.0 &nbsp;|&nbsp;
+   <strong>Última actualización:</strong> Junio 2026 &nbsp;|&nbsp;
+   <strong>Categoría:</strong> Installation Guide</p>
+
+</body>
+</html>
