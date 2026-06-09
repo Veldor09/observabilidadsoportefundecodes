@@ -1,7 +1,7 @@
 <!--
   ARTÍCULO DE CONOCIMIENTO — KB0001
   Título  : Instalación del Backend Fundecodes en Windows
-  Versión : 1.0
+  Versión : 2.0
   Autores : [Miembro 1 — Autor], [Miembro 2 — Coautor], [Miembro 3 — Aprobador]
 
   INSTRUCCIONES PARA SERVICENOW:
@@ -22,7 +22,8 @@
   <strong>Fundecodes Digital</strong> en un entorno Windows. El backend es una API REST
   desarrollada con <strong>NestJS</strong>, con <strong>PostgreSQL</strong> como base de datos
   y <strong>Prisma</strong> como ORM. El proceso utiliza <strong>Docker Desktop</strong>
-  para levantar la base de datos y <strong>PowerShell</strong> para ejecutar el servidor.
+  para levantar la base de datos en un contenedor aislado y <strong>PowerShell</strong>
+  para ejecutar el servidor.
 </p>
 
 <hr/>
@@ -30,8 +31,8 @@
 <h3>1. Descripción del sistema</h3>
 
 <p>
-  Fundecodes Digital es la plataforma de gestión interna de la fundación. El backend expone
-  una API REST que cubre los siguientes módulos:
+  Fundecodes Digital es la plataforma de gestión interna de la fundación ambiental. El backend
+  expone una API REST que cubre los siguientes módulos:
 </p>
 <ul>
   <li>Autenticación JWT (login, recuperación de contraseña)</li>
@@ -39,45 +40,76 @@
   <li>Proyectos y programa de voluntariado</li>
   <li>Facturación, contabilidad y reportes</li>
   <li>Noticias y páginas informativas</li>
-  <li>Endpoint <code>/metrics</code> para Prometheus</li>
+  <li>Endpoint <code>GET /metrics</code> para Prometheus (prom-client)</li>
+  <li>Endpoint <code>POST /api/webhooks/alert</code> para integración con Grafana → ServiceNow → MS Teams</li>
+</ul>
+
+<p><strong>Stack tecnológico:</strong></p>
+<ul>
+  <li><strong>NestJS</strong> — Framework Node.js</li>
+  <li><strong>Prisma ORM</strong> — Gestión de base de datos y migraciones</li>
+  <li><strong>PostgreSQL 16</strong> — Base de datos relacional (en Docker)</li>
+  <li><strong>prom-client</strong> — Métricas para Prometheus</li>
+  <li>Puerto por defecto: <strong>4001</strong></li>
 </ul>
 
 <p><strong>Diagrama de componentes:</strong></p>
 <p>
-  <em>[IMAGEN: Diagrama arquitectónico que muestre Frontend → Backend (NestJS en puerto 4000)
-  → PostgreSQL (puerto 5432), con Prometheus apuntando al endpoint /metrics del backend]</em>
+  <em>[IMAGEN: Diagrama arquitectónico que muestre Frontend (Next.js, puerto 3000) → Backend (NestJS, puerto 4001)
+  → PostgreSQL (contenedor Docker, puerto 5434), con Prometheus apuntando al endpoint /metrics del backend]</em>
 </p>
 
 <hr/>
 
-<h3>2. Requisitos previos</h3>
+<h3>2. Repositorio de código fuente</h3>
+
+<p>El código fuente del backend se encuentra en:</p>
+<p>
+  <strong>
+    <a href="https://github.com/Veldor09/backproyectosoportefundecodes">
+      https://github.com/Veldor09/backproyectosoportefundecodes
+    </a>
+  </strong>
+</p>
+
+<blockquote>
+  <strong>Nota:</strong> También existen repositorios para el
+  <a href="https://github.com/Veldor09/frontproyectosoportefundecodes">Frontend</a>
+  y para la
+  <a href="https://github.com/Veldor09/observabilidadsoportefundecodes">Observabilidad (Prometheus + Grafana)</a>.
+</blockquote>
+
+<hr/>
+
+<h3>3. Requisitos previos</h3>
 
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
-    <tr><th>Herramienta</th><th>Versión mínima</th><th>Verificación en PowerShell</th></tr>
+    <tr><th>Herramienta</th><th>Versión mínima</th><th>Descarga</th><th>Verificación en PowerShell</th></tr>
   </thead>
   <tbody>
-    <tr><td>Windows</td><td>10 / 11 (64-bit)</td><td>—</td></tr>
-    <tr><td>Node.js</td><td>20.x LTS</td><td><code>node --version</code></td></tr>
-    <tr><td>npm</td><td>10.x</td><td><code>npm --version</code></td></tr>
-    <tr><td>Docker Desktop</td><td>4.x</td><td><code>docker --version</code></td></tr>
-    <tr><td>Git para Windows</td><td>2.x</td><td><code>git --version</code></td></tr>
+    <tr><td>Windows</td><td>10 / 11 (64-bit)</td><td>—</td><td>—</td></tr>
+    <tr><td>Node.js</td><td>20.x LTS</td><td>https://nodejs.org/en/download</td><td><code>node --version</code></td></tr>
+    <tr><td>npm</td><td>10.x (viene con Node.js)</td><td>—</td><td><code>npm --version</code></td></tr>
+    <tr><td>Docker Desktop</td><td>4.x</td><td>https://www.docker.com/products/docker-desktop</td><td><code>docker --version</code></td></tr>
+    <tr><td>Git para Windows</td><td>2.x</td><td>https://git-scm.com/download/win</td><td><code>git --version</code></td></tr>
   </tbody>
 </table>
 
 <p>
   <em>[IMAGEN: PowerShell mostrando la salida de los cuatro comandos de verificación
-  anteriores ejecutados uno tras otro]</em>
+  (<code>node --version</code>, <code>npm --version</code>, <code>docker --version</code>, <code>git --version</code>)
+  ejecutados uno tras otro]</em>
 </p>
 
 <hr/>
 
-<h3>3. Instalar Node.js en Windows</h3>
+<h3>4. Instalar Node.js en Windows</h3>
 
 <ol>
   <li>
-    Descargar el instalador LTS desde <strong>nodejs.org</strong> (archivo
-    <code>.msi</code> para Windows 64-bit).
+    Descargar el instalador LTS desde <strong>https://nodejs.org/en/download</strong>
+    (archivo <code>.msi</code> para Windows 64-bit).
   </li>
   <li>
     Ejecutar el instalador con las opciones por defecto. Si aparece la pantalla
@@ -85,35 +117,32 @@
     herramientas adicionales.
   </li>
   <li>
-    Abrir una nueva ventana de <strong>PowerShell</strong> y verificar:
-    <pre><code>node --version   # v20.x.x
-npm --version    # 10.x.x</code></pre>
+    Abrir una <strong>nueva</strong> ventana de PowerShell y verificar:
+    <pre><code>node --version   # debe mostrar v20.x.x o superior
+npm --version    # debe mostrar 10.x.x o superior</code></pre>
   </li>
 </ol>
 
 <p>
-  <em>[IMAGEN: Instalador de Node.js en Windows mostrando la pantalla con la versión
-  20.x LTS y las opciones de instalación seleccionadas]</em>
+  <em>[IMAGEN: Instalador de Node.js en Windows mostrando la pantalla de bienvenida con versión 20.x LTS]</em>
 </p>
 
 <hr/>
 
-<h3>4. Instalar Docker Desktop en Windows</h3>
+<h3>5. Instalar Docker Desktop en Windows</h3>
 
 <ol>
   <li>
-    Descargar Docker Desktop desde <strong>docker.com/products/docker-desktop</strong>.
+    Descargar Docker Desktop desde <strong>https://www.docker.com/products/docker-desktop</strong>.
   </li>
   <li>
-    Ejecutar el instalador. Seleccionar la opción de usar
-    <strong>WSL 2</strong> como backend (recomendado en Windows 10/11).
+    Ejecutar el instalador. Seleccionar la opción de usar <strong>WSL 2</strong> como backend
+    (recomendado en Windows 10/11).
   </li>
-  <li>
-    Reiniciar el equipo si el instalador lo solicita.
-  </li>
+  <li>Reiniciar el equipo si el instalador lo solicita.</li>
   <li>
     Abrir Docker Desktop y esperar a que el ícono de la ballena en la barra de tareas
-    indique que Docker está corriendo.
+    muestre que Docker está corriendo (Engine running).
   </li>
   <li>
     Verificar en PowerShell:
@@ -123,78 +152,97 @@ docker compose version</code></pre>
 </ol>
 
 <p>
-  <em>[IMAGEN: Docker Desktop en Windows con el ícono en la barra de tareas y el
-  panel principal mostrando que el motor está corriendo (Engine running)]</em>
+  <em>[IMAGEN: Docker Desktop en Windows mostrando el panel principal con Engine running (ícono verde)]</em>
 </p>
 
 <hr/>
 
-<h3>5. Obtener el código fuente</h3>
+<h3>6. Obtener el código fuente</h3>
 
-<p>Abrir <strong>PowerShell</strong> y ejecutar:</p>
+<p>Abrir <strong>PowerShell</strong> como usuario normal (no como administrador) y ejecutar:</p>
 
-<pre><code># Clonar el repositorio
-git clone &lt;URL_DEL_REPOSITORIO&gt; fundecodes
-cd fundecodes\Back\backfundecodesdigital</code></pre>
+<pre><code># Clonar el repositorio del backend
+git clone https://github.com/Veldor09/backproyectosoportefundecodes
+
+# Entrar a la carpeta del proyecto
+cd backproyectosoportefundecodes</code></pre>
 
 <p>La estructura relevante del proyecto es la siguiente:</p>
-<pre><code>Back\backfundecodesdigital\
+<pre><code>backproyectosoportefundecodes\
 ├── src\                    # Código fuente NestJS
-│   ├── metrics\            # Métricas Prometheus
+│   ├── metrics\            # Métricas Prometheus (prom-client)
 │   ├── webhooks\           # Integración ServiceNow y Teams
 │   ├── auth\               # Autenticación JWT
 │   └── SistemaAdmin\       # Módulos del sistema
 ├── prisma\
 │   ├── schema.prisma       # Modelo de base de datos
-│   └── migrations\         # Migraciones aplicadas
-├── docker-compose.yml      # PostgreSQL en contenedor
-├── Dockerfile              # Imagen de producción
-└── .env.production.example # Plantilla de variables de entorno</code></pre>
-
-<hr/>
-
-<h3>6. Configurar variables de entorno</h3>
-
-<p>Copiar la plantilla de ejemplo y editarla:</p>
-
-<pre><code># En PowerShell, desde la carpeta backfundecodesdigital\
-Copy-Item .env.production.example .env
-notepad .env</code></pre>
-
-<p>Las variables mínimas necesarias para desarrollo local son:</p>
-
-<pre><code>NODE_ENV=development
-PORT=4000
-
-# PostgreSQL (debe coincidir con docker-compose.yml)
-DATABASE_URL=postgresql://fundecodes:fundecodes@localhost:5432/fundecodes_db?schema=public
-
-# JWT — generar con: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-JWT_SECRET=REEMPLAZAR_CON_SECRETO_LARGO
-JWT_EXPIRES=1d
-
-# Correo (opcional para desarrollo local)
-MJ_APIKEY_PUBLIC=
-MJ_APIKEY_PRIVATE=
-
-# ServiceNow (para integración de alertas)
-SERVICENOW_INSTANCE=https://&lt;tu-instancia&gt;.service-now.com
-SERVICENOW_USER=api.fundecodes
-SERVICENOW_PASSWORD=&lt;contraseña&gt;
-
-# MS Teams (Webhook de Power Automate)
-TEAMS_WEBHOOK_URL=https://&lt;tu-webhook&gt;</code></pre>
+│   └── migrations\         # Migraciones (22 migraciones aplicadas)
+├── docker-compose.yml      # PostgreSQL en contenedor aislado (puerto 5434)
+└── .env.example            # Plantilla de variables de entorno</code></pre>
 
 <p>
-  <em>[IMAGEN: Bloc de notas de Windows con el archivo .env abierto y las variables
-  configuradas (con contraseñas ocultadas)]</em>
+  <em>[IMAGEN: PowerShell mostrando el resultado del <code>git clone</code> y la estructura
+  de carpetas con <code>ls</code> o <code>tree /f</code>]</em>
 </p>
 
 <hr/>
 
-<h3>7. Levantar la base de datos con Docker Desktop</h3>
+<h3>7. Configurar variables de entorno</h3>
 
-<p>Desde PowerShell en la carpeta <code>backfundecodesdigital\</code>:</p>
+<p>Copiar la plantilla de ejemplo y editarla:</p>
+
+<pre><code># Desde PowerShell, en la raíz del proyecto clonado
+Copy-Item .env.example .env
+notepad .env</code></pre>
+
+<p>El archivo <code>.env</code> debe contener como mínimo:</p>
+
+<pre><code># ─── Postgres LOCAL ───────────────────────────────────────────────
+DATABASE_URL="postgresql://fundecodes_soporte:fundecodes_soporte@localhost:5434/fundecodes_soporte?schema=public"
+DIRECT_URL="postgresql://fundecodes_soporte:fundecodes_soporte@localhost:5434/fundecodes_soporte?schema=public"
+
+# ─── App ──────────────────────────────────────────────────────────
+PORT=4001
+NODE_ENV=development
+
+FRONTEND_URL=http://localhost:3000
+PUBLIC_FRONTEND_URL=http://localhost:3000
+FRONTEND_SET_PASSWORD_PATH=/set-password
+FRONTEND_RESET_PASSWORD_PATH=/reset-password
+
+# ─── JWT — generar con: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+JWT_SECRET=REEMPLAZAR_CON_SECRETO_LARGO
+PASSWORD_JWT_SECRET=REEMPLAZAR_CON_SECRETO_LARGO
+PASSWORD_JWT_EXPIRES=30m
+RESET_JWT_SECRET=REEMPLAZAR_CON_SECRETO_LARGO
+RESET_JWT_EXPIRES=30m
+
+# ─── ServiceNow (para integración de alertas) ─────────────────────
+SERVICENOW_INSTANCE=https://&lt;tu-instancia&gt;.service-now.com
+SERVICENOW_USER=admin
+SERVICENOW_PASSWORD=&lt;contraseña-de-la-instancia&gt;
+
+# ─── MS Teams (Webhook de Power Automate) ────────────────────────
+TEAMS_WEBHOOK_URL=https://&lt;tu-webhook-de-power-automate&gt;</code></pre>
+
+<blockquote>
+  <strong>Importante sobre el puerto y la base de datos:</strong><br/>
+  El backend corre en el <strong>puerto 4001</strong> (no 4000) para evitar conflictos
+  con otros servicios comunes. La base de datos PostgreSQL corre en el
+  <strong>puerto 5434</strong> (no 5432) para no interferir con instalaciones locales
+  de PostgreSQL. El nombre de la base de datos es <code>fundecodes_soporte</code>.
+</blockquote>
+
+<p>
+  <em>[IMAGEN: Bloc de notas o VS Code mostrando el archivo .env con las variables
+  configuradas (contraseñas ocultadas con asteriscos)]</em>
+</p>
+
+<hr/>
+
+<h3>8. Levantar la base de datos con Docker Desktop</h3>
+
+<p>Desde PowerShell en la raíz del proyecto clonado:</p>
 
 <pre><code>docker compose up -d</code></pre>
 
@@ -203,44 +251,69 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-webhook&gt;</code></pre>
 <pre><code>docker compose ps</code></pre>
 
 <p>La salida esperada es:</p>
-<pre><code>NAME           IMAGE         STATUS          PORTS
-fundecodes-db  postgres:16   Up (healthy)    0.0.0.0:5432->5432/tcp</code></pre>
+<pre><code>NAME                      IMAGE         STATUS          PORTS
+fundecodes-soporte-db     postgres:16   Up (healthy)    0.0.0.0:5434-&gt;5432/tcp</code></pre>
 
 <p>
-  También se puede verificar visualmente en el panel de <strong>Docker Desktop</strong>:
-  el contenedor <code>fundecodes-db</code> debe aparecer con estado
-  <em>Running</em> (ícono verde).
+  También se puede verificar visualmente en Docker Desktop: el contenedor
+  <code>fundecodes-soporte-db</code> debe aparecer con estado <em>Running</em> (ícono verde)
+  y mostrar el mapeo de puertos <code>0.0.0.0:5434→5432/tcp</code>.
 </p>
 
 <p>
-  <em>[IMAGEN: Docker Desktop en Windows mostrando el contenedor fundecodes-db en
-  estado Running con el puerto 5432 mapeado]</em>
+  <em>[IMAGEN: Docker Desktop mostrando el contenedor fundecodes-soporte-db en estado Running]</em>
 </p>
 
 <hr/>
 
-<h3>8. Instalar dependencias Node.js y ejecutar migraciones</h3>
+<h3>9. Instalar dependencias y ejecutar migraciones</h3>
 
-<pre><code># Instalar dependencias
+<pre><code># 1. Instalar dependencias de Node.js
 npm install
 
-# Generar el cliente Prisma
+# 2. Generar el cliente Prisma
 npx prisma generate
 
-# Aplicar las migraciones a la base de datos
-npx prisma migrate deploy
+# 3. Aplicar las 22 migraciones a la base de datos
+npx prisma migrate deploy</code></pre>
 
-# (Opcional) Poblar datos iniciales
-npx prisma db seed</code></pre>
+<p>La salida de <code>npx prisma migrate deploy</code> debe mostrar algo similar a:</p>
+<pre><code>Prisma Migrate: 22 migrations found in prisma/migrations.
+The following migration(s) have been applied:
+  20240101_init
+  20240102_add_users
+  ... (todas las migraciones)
+All migrations have been successfully applied.</code></pre>
 
 <p>
-  <em>[IMAGEN: PowerShell mostrando la salida de <code>npx prisma migrate deploy</code>
-  con todas las migraciones aplicadas exitosamente]</em>
+  <em>[IMAGEN: PowerShell mostrando la salida completa de <code>npx prisma migrate deploy</code>
+  con las 22 migraciones aplicadas exitosamente]</em>
 </p>
 
 <hr/>
 
-<h3>9. Iniciar el backend</h3>
+<h3>10. (Opcional) Cargar datos demo</h3>
+
+<p>
+  Para poblar la base de datos con datos de ejemplo realistas (áreas, proyectos, voluntarios,
+  transacciones, etc.) ejecutar el script de seed:
+</p>
+
+<pre><code>npx ts-node --transpile-only src/prisma/prisma/prisma.demo-seed.ts</code></pre>
+
+<p>Este script crea:</p>
+<ul>
+  <li>5 Áreas organizativas</li>
+  <li>10 Colaboradores</li>
+  <li>8 Proyectos ambientales</li>
+  <li>18 Voluntarios</li>
+  <li>25 Transacciones contables</li>
+  <li>40 Visitaciones de campo</li>
+</ul>
+
+<hr/>
+
+<h3>11. Iniciar el backend</h3>
 
 <h4>Modo desarrollo (con hot-reload)</h4>
 <pre><code>npm run start:dev</code></pre>
@@ -251,7 +324,7 @@ npm run start:prod</code></pre>
 
 <p>
   Una vez iniciado, el backend estará disponible en
-  <strong>http://localhost:4000</strong>.
+  <strong>http://localhost:4001</strong>.
 </p>
 
 <p>Endpoints clave:</p>
@@ -260,47 +333,49 @@ npm run start:prod</code></pre>
     <tr><th>Endpoint</th><th>Descripción</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>GET /healthz</code></td><td>Health check del servicio</td></tr>
-    <tr><td><code>GET /metrics</code></td><td>Métricas Prometheus</td></tr>
+    <tr><td><code>GET /healthz</code></td><td>Health check — responde <code>{"status":"ok"}</code></td></tr>
+    <tr><td><code>GET /metrics</code></td><td>Métricas Prometheus (prom-client)</td></tr>
     <tr><td><code>GET /api/docs</code></td><td>Documentación Swagger (solo en desarrollo)</td></tr>
-    <tr><td><code>POST /api/auth/login</code></td><td>Autenticación</td></tr>
+    <tr><td><code>POST /api/auth/login</code></td><td>Autenticación JWT</td></tr>
+    <tr><td><code>POST /api/webhooks/alert</code></td><td>Webhook de Grafana → crea incidente en ServiceNow</td></tr>
   </tbody>
 </table>
 
 <p>
-  <em>[IMAGEN: PowerShell mostrando el inicio del servidor NestJS con los logs de
-  arranque y el mensaje indicando que escucha en el puerto 4000]</em>
+  <em>[IMAGEN: PowerShell mostrando el inicio del servidor NestJS con los logs de arranque
+  y el mensaje "Application is running on: http://localhost:4001"]</em>
 </p>
 
 <p>
   <em>[IMAGEN: Navegador mostrando la respuesta JSON del endpoint
-  <code>http://localhost:4000/healthz</code> con <code>{"status":"ok"}</code>]</em>
+  <code>http://localhost:4001/healthz</code> con <code>{"status":"ok"}</code>]</em>
 </p>
 
 <p>
-  <em>[IMAGEN: Navegador mostrando el endpoint <code>http://localhost:4000/metrics</code>
-  con las métricas de Prometheus en formato texto]</em>
+  <em>[IMAGEN: Navegador mostrando el endpoint <code>http://localhost:4001/metrics</code>
+  con las métricas de Prometheus en formato texto plano]</em>
 </p>
 
 <hr/>
 
-<h3>10. Verificar el funcionamiento desde PowerShell</h3>
+<h3>12. Verificar el funcionamiento desde PowerShell</h3>
 
 <pre><code># Verificar health check
-Invoke-WebRequest -Uri http://localhost:4000/healthz | Select-Object -ExpandProperty Content
+Invoke-WebRequest -Uri http://localhost:4001/healthz | Select-Object -ExpandProperty Content
 
 # Verificar métricas Prometheus (primeras 20 líneas)
-(Invoke-WebRequest -Uri http://localhost:4000/metrics).Content -split "`n" | Select-Object -First 20</code></pre>
+(Invoke-WebRequest -Uri http://localhost:4001/metrics).Content -split "`n" | Select-Object -First 20</code></pre>
 
 <p>
   La respuesta de <code>/healthz</code> debe contener <code>{"status":"ok"}</code>.
-  La respuesta de <code>/metrics</code> debe mostrar líneas con prefijos como
-  <code>http_requests_total</code> y <code>nodejs_heap_size_used_bytes</code>.
+  La respuesta de <code>/metrics</code> debe mostrar líneas como
+  <code>http_requests_total</code>, <code>nodejs_heap_size_used_bytes</code> y
+  <code>process_cpu_seconds_total</code>.
 </p>
 
 <hr/>
 
-<h3>11. Resolución de problemas comunes en Windows</h3>
+<h3>13. Resolución de problemas comunes en Windows</h3>
 
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
@@ -308,35 +383,38 @@ Invoke-WebRequest -Uri http://localhost:4000/healthz | Select-Object -ExpandProp
   </thead>
   <tbody>
     <tr>
-      <td>Error: <code>Can't reach database server at localhost:5432</code></td>
+      <td>Error: <code>Can't reach database server at localhost:5434</code></td>
       <td>Docker Desktop no está corriendo o el contenedor no levantó</td>
-      <td>Abrir Docker Desktop, esperar a que el motor inicie, luego
+      <td>Abrir Docker Desktop, esperar a que el motor inicie, luego:
           <code>docker compose up -d</code></td>
     </tr>
     <tr>
-      <td>Error de política de ejecución de scripts en PowerShell</td>
+      <td>Error de política de ejecución en PowerShell</td>
       <td>Windows bloquea scripts por defecto</td>
       <td>Ejecutar en PowerShell como administrador:
           <code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></td>
     </tr>
     <tr>
-      <td>Puerto 4000 ya en uso</td>
-      <td>Otro proceso ocupa el puerto</td>
-      <td>Cambiar <code>PORT=4001</code> en <code>.env</code> o identificar el proceso:
-          <code>netstat -ano | findstr :4000</code></td>
+      <td>Puerto 4001 ya está en uso (EADDRINUSE)</td>
+      <td>Una instancia anterior del backend sigue corriendo</td>
+      <td>
+        Identificar y terminar el proceso:<br/>
+        <code>netstat -ano | findstr ":4001" | findstr "LISTENING"</code><br/>
+        <code>taskkill /PID &lt;número_PID&gt; /F</code>
+      </td>
     </tr>
     <tr>
       <td>Métricas no aparecen en Prometheus</td>
-      <td>Prometheus apunta a dirección incorrecta</td>
+      <td>Prometheus apunta a dirección incorrecta dentro de Docker</td>
       <td>Verificar que <code>prometheus.yml</code> usa
-          <code>host.docker.internal:4000</code> (no <code>localhost</code>)
+          <code>host.docker.internal:4001</code> (no <code>localhost</code>)
           ya que Prometheus corre dentro de Docker</td>
     </tr>
     <tr>
       <td>Error CORS desde el frontend</td>
-      <td><code>CORS_ALLOWED_ORIGINS</code> no incluye el origen del frontend</td>
-      <td>Agregar <code>http://localhost:3000</code> a
-          <code>CORS_ALLOWED_ORIGINS</code> en el <code>.env</code> del backend</td>
+      <td><code>FRONTEND_URL</code> no incluye el origen del frontend</td>
+      <td>Asegurarse de que en el <code>.env</code> del backend:
+          <code>FRONTEND_URL=http://localhost:3000</code></td>
     </tr>
     <tr>
       <td><code>npx prisma migrate deploy</code> falla con error de conexión</td>
@@ -349,16 +427,21 @@ Invoke-WebRequest -Uri http://localhost:4000/healthz | Select-Object -ExpandProp
 
 <hr/>
 
-<h3>12. Información adicional</h3>
+<h3>14. Información adicional</h3>
 
 <ul>
   <li>Para instalar el frontend Next.js en Windows, consultar
       <strong>KB0002 — Instalación del Frontend Fundecodes (Windows)</strong>.</li>
-  <li>Para el stack de observabilidad (Prometheus + Grafana), consultar
+  <li>Para el stack de observabilidad (Prometheus + Grafana + ServiceNow), consultar
       <strong>KB0003 — Configuración de Observabilidad, Alertas y Gestión de Incidentes</strong>.</li>
+  <li>Repositorio del backend:
+      <a href="https://github.com/Veldor09/backproyectosoportefundecodes">
+        https://github.com/Veldor09/backproyectosoportefundecodes
+      </a>
+  </li>
 </ul>
 
-<p><strong>Versión:</strong> 1.0 &nbsp;|&nbsp;
+<p><strong>Versión:</strong> 2.0 &nbsp;|&nbsp;
    <strong>Última actualización:</strong> Junio 2026 &nbsp;|&nbsp;
    <strong>Categoría:</strong> Installation Guide</p>
 

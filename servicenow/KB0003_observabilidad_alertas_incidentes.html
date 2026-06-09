@@ -1,7 +1,7 @@
 <!--
   ARTÍCULO DE CONOCIMIENTO — KB0003
   Título  : Observabilidad, Alertas y Gestión de Incidentes — Fundecodes
-  Versión : 1.0
+  Versión : 2.0
   Autores : [Miembro 1 — Autor], [Miembro 2 — Coautor], [Miembro 3 — Aprobador]
 
   INSTRUCCIONES PARA SERVICENOW:
@@ -22,57 +22,113 @@
   incluyendo la recolección de métricas con <strong>Prometheus</strong>, la visualización
   en <strong>Grafana</strong>, las tres alertas configuradas, la integración automática con
   <strong>ServiceNow</strong> y las notificaciones a <strong>MS Teams</strong>.
-  También explica cómo reproducir un incidente controlado con el script de carga.
+  También explica cómo reproducir un incidente controlado con los scripts de carga
+  y cómo ejecutar la simulación final automatizada.
 </p>
 
 <hr/>
 
-<h3>1. Arquitectura del sistema de observabilidad</h3>
+<h3>1. Repositorios del proyecto</h3>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr><th>Componente</th><th>Repositorio</th><th>Artículo KB</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Backend (NestJS)</td>
+      <td><a href="https://github.com/Veldor09/backproyectosoportefundecodes">https://github.com/Veldor09/backproyectosoportefundecodes</a></td>
+      <td>KB0001</td>
+    </tr>
+    <tr>
+      <td>Frontend (Next.js)</td>
+      <td><a href="https://github.com/Veldor09/frontproyectosoportefundecodes">https://github.com/Veldor09/frontproyectosoportefundecodes</a></td>
+      <td>KB0002</td>
+    </tr>
+    <tr>
+      <td>Observabilidad (Prometheus + Grafana)</td>
+      <td><a href="https://github.com/Veldor09/observabilidadsoportefundecodes">https://github.com/Veldor09/observabilidadsoportefundecodes</a></td>
+      <td>Este artículo</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h3>2. Arquitectura del sistema de observabilidad</h3>
 
 <p>El flujo completo de observabilidad funciona de la siguiente manera:</p>
 
 <ol>
-  <li>El backend NestJS expone métricas en <code>GET /metrics</code> (formato Prometheus).</li>
-  <li>Prometheus hace scraping de esas métricas cada 15 segundos.</li>
+  <li>El backend NestJS expone métricas en <code>GET /metrics</code> (formato Prometheus, usando prom-client).</li>
+  <li>Prometheus hace scraping de esas métricas cada 15 segundos desde <code>host.docker.internal:4001</code>.</li>
   <li>Grafana consulta Prometheus para mostrar dashboards en tiempo real.</li>
-  <li>Cuando una alerta se activa en Grafana, envía un webhook al endpoint
-      <code>POST /api/webhooks/alert</code> del backend.</li>
+  <li>Cuando una alerta supera su umbral, Grafana la evalúa y la pasa a estado <strong>Firing</strong>.</li>
+  <li>Grafana envía un webhook a <code>POST http://localhost:4001/api/webhooks/alert</code> del backend.</li>
   <li>El backend procesa la alerta en paralelo:
     <ul>
-      <li>Crea un incidente en <strong>ServiceNow</strong> via REST API.</li>
+      <li>Crea un incidente en <strong>ServiceNow</strong> via REST API (<code>/api/now/table/incident</code>).</li>
       <li>Envía una notificación al canal de <strong>MS Teams</strong> via Power Automate.</li>
     </ul>
   </li>
 </ol>
 
 <p>
-  <em>[IMAGEN: Diagrama de flujo completo: Backend → Prometheus → Grafana → Webhook →
+  <em>[IMAGEN: Diagrama de flujo completo:
+  Backend (NestJS :4001) → Prometheus (:9090) → Grafana (:3001) → Webhook →
   ServiceNow + MS Teams, con flechas y etiquetas de cada componente]</em>
 </p>
 
 <hr/>
 
-<h3>2. Requisitos para el stack de observabilidad</h3>
+<h3>3. Requisitos previos</h3>
 
 <ul>
-  <li>Backend Fundecodes corriendo en <code>http://localhost:4000</code> (ver <strong>KB0001</strong>)</li>
-  <li>Docker Desktop corriendo</li>
+  <li>Backend Fundecodes corriendo en <code>http://localhost:4001</code> (ver <strong>KB0001</strong>)</li>
+  <li>Docker Desktop corriendo en Windows</li>
   <li>Node.js 20 instalado (para los scripts de carga y simulación)</li>
-  <li>Acceso a la instancia de ServiceNow del equipo</li>
-  <li>URL del Webhook de MS Teams (Power Automate)</li>
+  <li>Acceso a la instancia de ServiceNow del equipo (ver sección 9)</li>
+  <li>URL del Webhook de MS Teams (Power Automate) configurada en el <code>.env</code> del backend</li>
 </ul>
 
 <hr/>
 
-<h3>3. Levantar Prometheus y Grafana</h3>
+<h3>4. Obtener el código de observabilidad</h3>
+
+<pre><code># Clonar el repositorio de observabilidad
+git clone https://github.com/Veldor09/observabilidadsoportefundecodes
+
+cd observabilidadsoportefundecodes</code></pre>
+
+<p>La estructura del repositorio de observabilidad es:</p>
+<pre><code>observabilidadsoportefundecodes/
+├── docker-compose.yml          # Prometheus + Grafana en Docker
+├── prometheus.yml              # Configuración de scraping (apunta a host.docker.internal:4001)
+├── alerts.yml                  # Definición de las 3 alertas
+├── grafana/
+│   ├── provisioning/
+│   │   ├── datasources/        # Auto-configura Prometheus como datasource
+│   │   └── dashboards/         # Auto-carga el dashboard de Fundecodes
+│   └── dashboard-files/
+│       └── fundecodes.json     # Dashboard JSON (importable en Grafana)
+├── load-test/
+│   └── load-test.js            # Script de carga controlada
+├── demo/
+│   └── demo.js                 # Script de simulación final automatizada
+└── servicenow/
+    ├── test-servicenow.js      # Script de prueba de integración con ServiceNow
+    └── KB0001/KB0002/KB0003    # Artículos de conocimiento (estos archivos)</code></pre>
+
+<hr/>
+
+<h3>5. Levantar Prometheus y Grafana</h3>
 
 <p>
   Todos los componentes de observabilidad se levantan con un único comando desde la
-  carpeta <code>observability/</code>:
+  raíz del repositorio clonado:
 </p>
 
-<pre><code>cd observability
-docker compose up -d</code></pre>
+<pre><code>docker compose up -d</code></pre>
 
 <p>Verificar que ambos contenedores están corriendo:</p>
 
@@ -80,11 +136,11 @@ docker compose up -d</code></pre>
 
 <p>La salida esperada es:</p>
 <pre><code>NAME                    IMAGE                    STATUS          PORTS
-fundecodes-prometheus   prom/prometheus:latest   Up (healthy)    0.0.0.0:9090->9090/tcp
-fundecodes-grafana      grafana/grafana:latest   Up              0.0.0.0:3001->3000/tcp</code></pre>
+fundecodes-prometheus   prom/prometheus:latest   Up (healthy)    0.0.0.0:9090-&gt;9090/tcp
+fundecodes-grafana      grafana/grafana:latest   Up              0.0.0.0:3001-&gt;3000/tcp</code></pre>
 
 <p>
-  <em>[IMAGEN: Terminal mostrando la salida de <code>docker compose ps</code> con ambos
+  <em>[IMAGEN: PowerShell mostrando la salida de <code>docker compose ps</code> con ambos
   contenedores en estado Up]</em>
 </p>
 
@@ -99,41 +155,28 @@ fundecodes-grafana      grafana/grafana:latest   Up              0.0.0.0:3001->3
   </tbody>
 </table>
 
-<hr/>
-
-<h3>4. Configurar la variable del Webhook de MS Teams</h3>
-
-<p>
-  Antes de levantar Grafana por primera vez, o para actualizar el webhook, configurar
-  la variable de entorno en el archivo <code>observability/.env</code>:
-</p>
-
-<pre><code># Crear o editar el archivo .env dentro de observability/
-TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
-</code></pre>
-
-<p>
-  Luego reiniciar Grafana para que tome el nuevo valor:
-</p>
-<pre><code>docker compose restart grafana</code></pre>
+<blockquote>
+  <strong>Importante:</strong> Grafana corre en el puerto <strong>3001</strong> (no 3000),
+  ya que el puerto 3000 lo usa el frontend Next.js.
+</blockquote>
 
 <hr/>
 
-<h3>5. Dashboard de Grafana</h3>
+<h3>6. Dashboard de Grafana</h3>
 
 <p>
   El dashboard <strong>Fundecodes Backend</strong> se provisiona automáticamente al
   levantar el stack. Para acceder:
 </p>
 <ol>
-  <li>Ir a <code>http://localhost:3001</code> e iniciar sesión.</li>
+  <li>Ir a <code>http://localhost:3001</code> e iniciar sesión (admin / fundecodes2024).</li>
   <li>Navegar a <strong>Dashboards → Fundecodes Backend</strong>.</li>
 </ol>
 
 <p>El dashboard incluye los siguientes paneles:</p>
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
-    <tr><th>Panel</th><th>Métrica</th><th>Descripción</th></tr>
+    <tr><th>Panel</th><th>Métrica PromQL</th><th>Descripción</th></tr>
   </thead>
   <tbody>
     <tr>
@@ -157,25 +200,30 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
       <td>Memoria heap de Node.js en uso</td>
     </tr>
     <tr>
-      <td>Active Requests</td>
-      <td><code>http_active_requests</code></td>
-      <td>Peticiones HTTP actualmente en proceso</td>
+      <td>CPU Usage</td>
+      <td><code>rate(process_cpu_seconds_total[1m])</code></td>
+      <td>Uso de CPU del proceso NestJS</td>
+    </tr>
+    <tr>
+      <td>Event Loop Lag</td>
+      <td><code>nodejs_eventloop_lag_seconds</code></td>
+      <td>Retraso del event loop (indicador de sobrecarga)</td>
     </tr>
   </tbody>
 </table>
 
 <p>
-  <em>[IMAGEN: Dashboard de Grafana mostrando los 5 paneles con métricas en tiempo real,
-  con el sistema en estado normal (sin alertas)]</em>
+  <em>[IMAGEN: Dashboard de Grafana mostrando los paneles con métricas en tiempo real,
+  con el sistema en estado normal (todos los paneles en verde)]</em>
 </p>
 
 <hr/>
 
-<h3>6. Alertas configuradas</h3>
+<h3>7. Alertas configuradas</h3>
 
 <p>
   El sistema tiene tres alertas definidas en
-  <code>observability/alerts.yml</code> y provisionadas en Grafana:
+  <code>alerts.yml</code> y provisionadas automáticamente en Grafana:
 </p>
 
 <h4>Alerta 1 — HighHttpErrorRate (warning)</h4>
@@ -187,11 +235,11 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
   sum(rate(http_errors_total{app="fundecodes-backend"}[2m]))
   /
   sum(rate(http_requests_total{app="fundecodes-backend"}[2m]))
-) > 0.10</code></pre>
+) &gt; 0.10</code></pre>
 <p>
   <strong>Significado operativo:</strong> Indica que el sistema está rechazando
   o fallando al procesar una fracción significativa del tráfico. Puede ser
-  causado por un bug, una ruta inexistente o sobrecarga.
+  causado por un bug, una ruta inexistente o sobrecarga del servidor.
 </p>
 
 <h4>Alerta 2 — HighHeapMemoryUsage (warning)</h4>
@@ -199,7 +247,7 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
   <strong>Condición:</strong> El heap de Node.js supera 250 MB de forma sostenida
   durante 2 minutos.
 </p>
-<pre><code>nodejs_heap_size_used_bytes{app="fundecodes-backend"} > 262144000</code></pre>
+<pre><code>nodejs_heap_size_used_bytes{app="fundecodes-backend"} &gt; 262144000</code></pre>
 <p>
   <strong>Significado operativo:</strong> Indica un posible memory leak o que el
   sistema está procesando cargas inusualmente grandes. Si no se atiende, puede
@@ -215,7 +263,7 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
   0.95,
   sum(rate(http_request_duration_seconds_bucket{app="fundecodes-backend"}[5m]))
   by (le, route)
-) > 2</code></pre>
+) &gt; 2</code></pre>
 <p>
   <strong>Significado operativo:</strong> El API está respondiendo lentamente.
   Puede indicar consultas lentas a la base de datos, N+1 queries o bloqueo del
@@ -224,7 +272,7 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
 
 <p>
   <em>[IMAGEN: Interfaz de alertas en Grafana (Alerting → Alert Rules) mostrando las
-  tres alertas configuradas con sus estados (Normal / Firing)]</em>
+  tres alertas configuradas con sus estados actuales (Normal / Pending / Firing)]</em>
 </p>
 
 <p>
@@ -234,7 +282,7 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
 
 <hr/>
 
-<h3>7. Flujo automático: Alerta → Incidente → Notificación</h3>
+<h3>8. Flujo automático: Alerta → Incidente → Notificación</h3>
 
 <p>
   Cuando una alerta pasa al estado <strong>Firing</strong> en Grafana, el siguiente
@@ -244,7 +292,7 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
 <ol>
   <li>
     Grafana envía un webhook a
-    <code>POST http://localhost:4000/api/webhooks/alert</code>
+    <code>POST http://localhost:4001/api/webhooks/alert</code>
     con los datos de la alerta en formato JSON.
   </li>
   <li>
@@ -255,7 +303,7 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
     </ul>
   </li>
   <li>
-    El backend crea un incidente en ServiceNow con los campos:
+    El backend crea un incidente en ServiceNow vía REST API con los campos:
     <ul>
       <li><strong>Short description:</strong> <code>[Fundecodes] &lt;título de la alerta&gt;</code></li>
       <li><strong>Category:</strong> Software / Application</li>
@@ -275,20 +323,97 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
 
 <p>
   <em>[IMAGEN: Canal de MS Teams mostrando la notificación de alerta con el
-  emoji de color (rojo para critical, amarillo para warning), el título y la
-  descripción del incidente]</em>
+  título y la descripción del incidente]</em>
 </p>
 
 <hr/>
 
-<h3>8. Simulación de carga y reproducción de incidentes</h3>
+<h3>9. Configuración de ServiceNow</h3>
 
 <p>
-  El script <code>observability/load-test/load-test.js</code> permite generar carga
-  controlada para activar las alertas y observar su impacto en los dashboards.
+  Para que la integración automática funcione, la instancia de ServiceNow debe estar
+  configurada correctamente. A continuación se describen los pasos realizados:
 </p>
 
-<h4>8.1 Modos disponibles</h4>
+<h4>9.1 Variables de entorno requeridas en el backend</h4>
+
+<p>En el archivo <code>.env</code> del backend (repositorio KB0001) configurar:</p>
+
+<pre><code># ServiceNow
+SERVICENOW_INSTANCE=https://&lt;tu-instancia&gt;.service-now.com
+SERVICENOW_USER=admin
+SERVICENOW_PASSWORD=&lt;contraseña-de-la-instancia&gt;</code></pre>
+
+<h4>9.2 Deshabilitar reglas de negocio lentas (solo instancias de desarrollador)</h4>
+
+<p>
+  Las instancias de desarrollador de ServiceNow tienen un límite de 30 segundos por
+  transacción REST. Si la instancia tiene muchas reglas de negocio activas, los
+  inserts pueden agotarse. Para solucionarlo, se pueden deshabilitar las reglas
+  innecesarias desde el menú <strong>System Definition → Business Rules</strong>,
+  filtrando por tabla <code>incident</code> y deshabilitando las que ejecutan
+  lógica asíncrona pesada.
+</p>
+
+<h4>9.3 Verificar la integración con el script de prueba</h4>
+
+<pre><code># Desde la raíz del repositorio de observabilidad:
+$env:SERVICENOW_INSTANCE="https://&lt;tu-instancia&gt;.service-now.com"
+$env:SERVICENOW_USER="admin"
+$env:SERVICENOW_PASSWORD="&lt;contraseña&gt;"
+node servicenow/test-servicenow.js</code></pre>
+
+<p>Si todo está correcto, la salida debe mostrar:</p>
+<pre><code>📡  Creando incidente de prueba en https://&lt;tu-instancia&gt;.service-now.com…
+✅  Incidente creado:
+    Número   : INC0010001
+    ID       : abc123...
+    Estado   : 1
+    Resumen  : Fundecodes TEST - Alerta alta tasa de errores HTTP
+    URL      : https://&lt;tu-instancia&gt;.service-now.com/incident.do?sys_id=abc123
+
+🔔  Simulando webhook de Grafana al backend local…
+✅  Backend procesó la alerta: {"message":"Alert processed","incidentNumber":"INC0010001"}
+
+🔧  Resolviendo incidente abc123…
+✅  Incidente resuelto correctamente.
+
+🎉  Prueba completa.</code></pre>
+
+<h4>9.4 Ver incidentes en ServiceNow</h4>
+
+<p>Los incidentes creados por Fundecodes se pueden ver en:</p>
+<ul>
+  <li>
+    <strong>Todos los incidentes:</strong>
+    <code>https://&lt;tu-instancia&gt;.service-now.com/incident_list.do</code>
+  </li>
+  <li>
+    <strong>Solo incidentes de Fundecodes:</strong>
+    <code>https://&lt;tu-instancia&gt;.service-now.com/incident_list.do?sysparm_query=short_descriptionLIKEFundecodes</code>
+  </li>
+  <li>
+    <strong>Incidentes resueltos/cerrados:</strong>
+    <code>https://&lt;tu-instancia&gt;.service-now.com/incident_list.do?sysparm_query=state=6^ORstate=7</code>
+  </li>
+</ul>
+
+<blockquote>
+  <strong>Nota:</strong> Por defecto la lista de incidentes solo muestra activos (state &lt; 6).
+  Para ver todos, quitar el filtro <em>"Active = true"</em> haciendo clic en la X que aparece
+  en la barra de filtros superior.
+</blockquote>
+
+<hr/>
+
+<h3>10. Simulación de carga controlada (load-test.js)</h3>
+
+<p>
+  El script <code>load-test/load-test.js</code> permite generar carga controlada
+  para activar las alertas y observar su impacto en los dashboards.
+</p>
+
+<h4>10.1 Modos disponibles</h4>
 
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
@@ -296,76 +421,79 @@ TEAMS_WEBHOOK_URL=https://&lt;tu-instancia&gt;.powerautomate.com/...
   </thead>
   <tbody>
     <tr>
-      <td><code>normal</code></td>
-      <td><code>node load-test.js</code></td>
+      <td>Normal</td>
+      <td><code>node load-test/load-test.js</code></td>
       <td>Tráfico moderado (30 req/s, 60s). Sin alertas.</td>
     </tr>
     <tr>
-      <td><code>stress</code></td>
-      <td><code>node load-test.js --mode stress --rps 150 --duration 120</code></td>
-      <td>Carga alta que dispara <strong>SlowApiResponses</strong> y <strong>HighHeapMemoryUsage</strong>.</td>
+      <td>Stress</td>
+      <td><code>node load-test/load-test.js --mode stress --rps 150 --duration 120</code></td>
+      <td>Carga alta que puede disparar <strong>SlowApiResponses</strong> y <strong>HighHeapMemoryUsage</strong>.</td>
     </tr>
     <tr>
-      <td><code>error</code></td>
-      <td><code>node load-test.js --mode error --rps 50 --duration 60</code></td>
+      <td>Error</td>
+      <td><code>node load-test/load-test.js --mode error --rps 50 --duration 60</code></td>
       <td>Genera errores 404/401 que disparan <strong>HighHttpErrorRate</strong>.</td>
     </tr>
   </tbody>
 </table>
 
-<h4>8.2 Pasos para reproducir el incidente</h4>
+<h4>10.2 Pasos para reproducir el incidente manualmente</h4>
 
 <ol>
   <li>
-    Verificar que el backend está corriendo:
-    <pre><code>curl http://localhost:4000/healthz</code></pre>
+    Verificar que el backend y el stack de observabilidad están corriendo:
+    <pre><code># Backend: debe responder con {"status":"ok"}
+Invoke-WebRequest -Uri http://localhost:4001/healthz | Select-Object -ExpandProperty Content
+
+# Prometheus: debe responder OK
+Invoke-WebRequest -Uri http://localhost:9090/-/healthy | Select-Object -ExpandProperty Content
+
+# Grafana: debe responder con {"commit":"...","database":"ok",...}
+Invoke-WebRequest -Uri http://localhost:3001/api/health | Select-Object -ExpandProperty Content</code></pre>
   </li>
   <li>
     Abrir Grafana (<code>http://localhost:3001</code>) en el dashboard
     <strong>Fundecodes Backend</strong> para observar las métricas en tiempo real.
   </li>
   <li>
-    Desde la carpeta <code>observability/load-test/</code>, lanzar la carga de estrés:
-    <pre><code>node load-test.js --mode stress --rps 150 --duration 120</code></pre>
+    Desde la raíz del repositorio de observabilidad, lanzar la carga de estrés:
+    <pre><code>node load-test/load-test.js --mode stress --rps 150 --duration 120</code></pre>
   </li>
   <li>
     Observar en Grafana cómo los paneles de latencia y memoria superan sus umbrales
     (aproximadamente entre 1 y 3 minutos tras iniciar la carga).
   </li>
   <li>
-    Una vez que la alerta pase a estado <strong>Firing</strong>, verificar:
-    <ul>
-      <li>El incidente creado en ServiceNow.</li>
-      <li>La notificación en el canal de MS Teams.</li>
-    </ul>
+    Una vez que la alerta pase a estado <strong>Firing</strong>, verificar en ServiceNow
+    el incidente creado y la notificación en el canal de MS Teams.
   </li>
   <li>
     Detener el script cuando termine (o con <kbd>Ctrl+C</kbd>). Las métricas se
-    recuperarán y la alerta pasará a estado <strong>Normal</strong> en 1-2 minutos.
+    recuperarán y la alerta volverá a <strong>Normal</strong> en 1-2 minutos.
   </li>
 </ol>
 
 <p>
-  <em>[IMAGEN: Terminal ejecutando load-test.js en modo stress, mostrando el contador
+  <em>[IMAGEN: PowerShell ejecutando load-test.js en modo stress, mostrando el contador
   de peticiones enviadas y el porcentaje de errores]</em>
 </p>
 
 <p>
   <em>[IMAGEN: Dashboard de Grafana durante la simulación, con los paneles de latencia
-  y memoria en rojo superando los umbrales y la alerta en estado Firing]</em>
+  y memoria superando los umbrales y las alertas en estado Firing]</em>
 </p>
 
 <hr/>
 
-<h3>9. Simulación final automatizada (demo.js)</h3>
+<h3>11. Simulación final automatizada (demo.js)</h3>
 
 <p>
-  Para la presentación final, el script <code>observability/demo/demo.js</code>
-  ejecuta el flujo completo de forma automática y guiada:
+  Para la presentación final, el script <code>demo/demo.js</code>
+  ejecuta el flujo completo de forma automática y guiada en <strong>~5 minutos</strong>:
 </p>
 
-<pre><code>cd observability/demo
-node demo.js</code></pre>
+<pre><code>node demo/demo.js</code></pre>
 
 <p>El script ejecuta los siguientes pasos en secuencia:</p>
 
@@ -375,28 +503,52 @@ node demo.js</code></pre>
   </thead>
   <tbody>
     <tr><td>1</td><td>Verificación del stack (backend, Prometheus, Grafana)</td><td>~10s</td></tr>
-    <tr><td>2</td><td>Tráfico normal (baseline a 5 req/s)</td><td>30s</td></tr>
-    <tr><td>3</td><td>Carga de estrés (120 req/s)</td><td>90s</td></tr>
-    <tr><td>4</td><td>Espera y verificación de alertas en Grafana</td><td>hasta 2 min</td></tr>
-    <tr><td>5</td><td>Creación de incidente en ServiceNow + notificación Teams</td><td>~10s</td></tr>
-    <tr><td>6</td><td>Periodo de recuperación</td><td>30s</td></tr>
-    <tr><td>7</td><td>Resolución del incidente en ServiceNow</td><td>~5s</td></tr>
+    <tr><td>2</td><td>Tráfico normal (baseline a 5 req/s) — muestra métricas normales</td><td>30s</td></tr>
+    <tr><td>3</td><td>Carga de estrés (120 req/s por defecto) — sube las métricas</td><td>90s</td></tr>
+    <tr><td>4</td><td>Espera y verificación de alertas activas en Grafana</td><td>hasta 2 min</td></tr>
+    <tr><td>5</td><td>Dispara webhook → crea incidente en ServiceNow + notificación Teams</td><td>~10s</td></tr>
+    <tr><td>6</td><td>Periodo de recuperación — métricas vuelven a la normalidad</td><td>30s</td></tr>
+    <tr><td>7</td><td>Resolución automática del incidente en ServiceNow</td><td>~5s</td></tr>
   </tbody>
 </table>
 
 <p>
-  Para ajustar la carga sin modificar el script, usar el parámetro <code>--rps</code>:
+  Para ajustar la intensidad de la carga sin modificar el script, usar el parámetro <code>--rps</code>:
 </p>
-<pre><code>node demo.js --rps 80</code></pre>
+<pre><code># Carga más baja (apta para equipos con menos recursos)
+node demo/demo.js --rps 80
+
+# Omitir verificación inicial si el stack ya está levantado
+node demo/demo.js --skip-checks</code></pre>
 
 <p>
-  <em>[IMAGEN: Terminal mostrando la salida del script demo.js con todos los pasos
-  completados y sus marcas de tiempo, incluyendo el número de incidente de ServiceNow]</em>
+  <em>[IMAGEN: PowerShell mostrando la salida completa del script demo.js con todos los
+  7 pasos completados, incluyendo el número de incidente de ServiceNow y su resolución]</em>
 </p>
 
 <hr/>
 
-<h3>10. Resolución de problemas del stack de observabilidad</h3>
+<h3>12. Verificar targets de Prometheus</h3>
+
+<p>
+  Para confirmar que Prometheus está recolectando métricas del backend:
+</p>
+<ol>
+  <li>Abrir <code>http://localhost:9090/targets</code>.</li>
+  <li>Verificar que el target <code>fundecodes-backend</code> aparece con estado
+      <strong>UP</strong> (fondo verde) y que el campo <em>Last Scrape</em> se actualiza
+      regularmente (cada ~15 segundos).</li>
+</ol>
+
+<p>
+  <em>[IMAGEN: Página de targets de Prometheus (<code>/targets</code>) mostrando el
+  job <code>fundecodes-backend</code> en estado UP con la URL del endpoint y la última
+  vez que fue scrapeado]</em>
+</p>
+
+<hr/>
+
+<h3>13. Resolución de problemas del stack de observabilidad</h3>
 
 <table border="1" cellpadding="6" cellspacing="0">
   <thead>
@@ -404,20 +556,30 @@ node demo.js</code></pre>
   </thead>
   <tbody>
     <tr>
-      <td>Prometheus no recolecta métricas del backend</td>
-      <td><code>host.docker.internal</code> no resuelve en Linux</td>
+      <td>Prometheus no recolecta métricas (target DOWN)</td>
+      <td><code>host.docker.internal</code> no resuelve o el backend no está corriendo en el puerto 4001</td>
       <td>
-        Agregar al servicio prometheus en <code>docker-compose.yml</code>:
+        1. Verificar que el backend corre: <code>Invoke-WebRequest http://localhost:4001/metrics</code><br/>
+        2. En Linux, agregar al servicio prometheus en <code>docker-compose.yml</code>:
         <code>extra_hosts: ["host.docker.internal:host-gateway"]</code>
-        (ya está incluido en la configuración actual)
+        (ya incluido en la configuración actual)
       </td>
     </tr>
     <tr>
-      <td>Las alertas no llegan a ServiceNow</td>
-      <td>Variables de entorno del backend no configuradas</td>
+      <td>Las alertas no crean incidentes en ServiceNow</td>
+      <td>Variables de entorno del backend no configuradas correctamente</td>
       <td>
-        Verificar <code>SERVICENOW_INSTANCE</code>, <code>SERVICENOW_USER</code>
-        y <code>SERVICENOW_PASSWORD</code> en el <code>.env</code> del backend
+        Verificar en el <code>.env</code> del backend:
+        <code>SERVICENOW_INSTANCE</code>, <code>SERVICENOW_USER</code> y
+        <code>SERVICENOW_PASSWORD</code>. Reiniciar el backend después de cambiar el .env.
+      </td>
+    </tr>
+    <tr>
+      <td>Error "Transaction cancelled: maximum execution time exceeded" en ServiceNow</td>
+      <td>Las instancias de desarrollador tienen un límite de 30s por transacción</td>
+      <td>
+        Ir a ServiceNow → System Definition → Business Rules → filtrar por tabla
+        <code>incident</code> → deshabilitar las reglas asíncronas más pesadas.
       </td>
     </tr>
     <tr>
@@ -425,32 +587,44 @@ node demo.js</code></pre>
       <td><code>TEAMS_WEBHOOK_URL</code> no configurado o expirado</td>
       <td>
         Regenerar el webhook en Power Automate y actualizar
-        <code>TEAMS_WEBHOOK_URL</code> en el <code>.env</code> del backend
+        <code>TEAMS_WEBHOOK_URL</code> en el <code>.env</code> del backend.
+        Reiniciar el backend.
       </td>
     </tr>
     <tr>
-      <td>Grafana muestra "No data" en los paneles</td>
+      <td>Grafana muestra "No data" en todos los paneles</td>
       <td>El datasource de Prometheus no está conectado</td>
       <td>
-        Ir a <strong>Connections → Data sources → Prometheus</strong>
-        y hacer clic en <strong>Save &amp; test</strong>
+        Ir a Grafana → <strong>Connections → Data sources → Prometheus</strong>
+        → hacer clic en <strong>Save &amp; test</strong>
       </td>
     </tr>
     <tr>
       <td>Las alertas no pasan a Firing aunque la carga es alta</td>
-      <td>El backend no está siendo apuntado correctamente por Prometheus</td>
+      <td>Prometheus no está scrapeando el backend</td>
       <td>
-        Verificar en Prometheus (<code>http://localhost:9090/targets</code>)
-        que el target <code>fundecodes-backend</code> esté en estado UP
+        Verificar en <code>http://localhost:9090/targets</code> que el target
+        <code>fundecodes-backend</code> está en estado UP.
+        Si está DOWN, verificar que el backend corre en el puerto 4001.
       </td>
     </tr>
     <tr>
       <td>El script demo.js falla en el Paso 1</td>
       <td>Algún servicio no está levantado</td>
       <td>
-        Ejecutar primero el backend (<code>npm run start:dev</code>) y
-        el stack Docker (<code>docker compose up -d</code>), luego ejecutar
-        <code>node demo.js</code>
+        Levantar el stack en orden:<br/>
+        1. <code>docker compose up -d</code> (en el repo de observabilidad)<br/>
+        2. <code>npm run start:dev</code> (en el repo del backend)<br/>
+        3. <code>node demo/demo.js</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Node.js crash con "Assertion failed: UV_HANDLE_CLOSING" en Windows</td>
+      <td>Bug de Node.js en Windows con el módulo fetch nativo en conexiones asíncronas</td>
+      <td>
+        Los scripts <code>test-servicenow.js</code> y <code>demo.js</code> ya usan
+        <code>https.request</code> en lugar de <code>fetch</code> para evitar este problema.
+        Verificar que no se estén usando versiones antiguas de los scripts.
       </td>
     </tr>
   </tbody>
@@ -458,43 +632,26 @@ node demo.js</code></pre>
 
 <hr/>
 
-<h3>11. Verificar targets de Prometheus</h3>
-
-<p>
-  Para confirmar que Prometheus está recolectando métricas correctamente:
-</p>
-<ol>
-  <li>Abrir <code>http://localhost:9090/targets</code>.</li>
-  <li>Verificar que el target <code>fundecodes-backend</code> aparece con estado
-      <strong>UP</strong> (fondo verde).</li>
-</ol>
-
-<p>
-  <em>[IMAGEN: Página de targets de Prometheus (<code>/targets</code>) mostrando el
-  job <code>fundecodes-backend</code> en estado UP con el endpoint y la última
-  vez que fue scrapeado]</em>
-</p>
-
-<hr/>
-
-<h3>12. Información adicional</h3>
+<h3>14. Información adicional</h3>
 
 <ul>
   <li>
-    Para instalar el backend (dependencia del sistema de observabilidad), consultar
-    <strong>KB0001 — Instalación del Backend Fundecodes (Linux)</strong>.
+    Para instalar el backend NestJS, consultar
+    <strong>KB0001 — Instalación del Backend Fundecodes (Windows)</strong>.
   </li>
   <li>
-    Para instalar el frontend, consultar
+    Para instalar el frontend Next.js, consultar
     <strong>KB0002 — Instalación del Frontend Fundecodes (Windows)</strong>.
   </li>
   <li>
-    Los archivos de configuración del stack de observabilidad se encuentran en
-    la carpeta <code>observability/</code> del repositorio.
+    Repositorio de observabilidad:
+    <a href="https://github.com/Veldor09/observabilidadsoportefundecodes">
+      https://github.com/Veldor09/observabilidadsoportefundecodes
+    </a>
   </li>
 </ul>
 
-<p><strong>Versión:</strong> 1.0 &nbsp;|&nbsp;
+<p><strong>Versión:</strong> 2.0 &nbsp;|&nbsp;
    <strong>Última actualización:</strong> Junio 2026 &nbsp;|&nbsp;
    <strong>Categoría:</strong> Operations Guide</p>
 
