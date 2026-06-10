@@ -17,6 +17,8 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: instance
         replacement: 'fundecodes-backend'
+      - target_label: app
+        replacement: 'fundecodes-backend'
 
   - job_name: 'prometheus'
     static_configs:
